@@ -143,7 +143,8 @@ const saveInterface = async (
 	const file = fs.createWriteStream(`${contractIdentifier}.ts`);
 	// Write formatted blocks
 	let indentLevel = 0;
-	const write = (value: string) => file.write('\t'.repeat(indentLevel) + value + '\n');
+	let resultLines = Array<String>();
+	const write = (value: String) => { resultLines.push('\t'.repeat(indentLevel) + value) }
 	const writeIndented = (level: IndentedGeneratorLevel) => {
 		for (const outerWrapper of Object.keys(level)) {
 			write(`${outerWrapper} {`);
@@ -170,6 +171,10 @@ const saveInterface = async (
 		}
 	};
 	// Write interface to file and close
-	writeLevel(interfaceContent);
-	file.close();
+	file.on('open', function() {
+		writeLevel(interfaceContent);
+		file.write(resultLines.join('\n'));
+		file.end();
+		file.close()
+	});
 };
