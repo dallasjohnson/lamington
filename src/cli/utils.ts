@@ -34,6 +34,7 @@ import { sleep } from '../utils';
 import { generateTypes } from '../contracts';
 import { ConfigManager } from '../configManager';
 import * as spinner from './logIndicator';
+import { option } from 'commander';
 
 /** @hidden Current working directory reference */
 const WORKING_DIRECTORY = process.cwd();
@@ -259,7 +260,7 @@ export const startEos = async () => {
  * @author Kevin Brown <github.com/thekevinbrown>
  * @note This is where we should allow configuration over all files or specified files/folder
  */
-export const runTests = async () => {
+export const runTests = async (options?: { grep?: string }) => {
 	// Initialize the EOS connection manager
 	EOSManager.initWithDefaults();
 	// Register ts-mocha if it's a Typescript project
@@ -284,6 +285,10 @@ export const runTests = async () => {
 
 	// Instantiate a Mocha instance.
 	const mocha = new Mocha();
+	if (options?.grep) {
+		mocha.grep(options.grep);
+		console.log('Applying grep filter to tests: ', options.grep);
+	}
 
 	for (const testFile of files) {
 		mocha.addFile(path.join(WORKING_DIRECTORY, testFile));
