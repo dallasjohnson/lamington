@@ -48,7 +48,7 @@ const run = async (options: { grep?: string | undefined } | undefined) => {
 	}
 };
 
-run(program).catch(async error => {
+run(program).catch(async (error) => {
 	process.exitCode = 1;
 	console.log(error);
 

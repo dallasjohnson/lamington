@@ -100,7 +100,7 @@ export const buildImage = async () => {
 	spinner.create('Building docker image');
 	// Clear the docker directory if it exists.
 	await rimraf(TEMP_DOCKER_DIRECTORY);
-	await mkdirp(TEMP_DOCKER_DIRECTORY);
+	await mkdirp(TEMP_DOCKER_DIRECTORY, {});
 	// Write a Dockerfile so Docker knows what to build.
 	const systemDeps = ['build-essential', 'ca-certificates', 'cmake', 'curl', 'git', 'wget'];
 	await writeFile(
@@ -303,7 +303,7 @@ export const runTests = async (options?: { grep?: string }) => {
 
 	// Run the tests.
 	await new Promise((resolve, reject) =>
-		mocha.run(failures => {
+		mocha.run((failures) => {
 			if (failures) return reject(failures);
 			return resolve();
 		})
@@ -355,7 +355,7 @@ export const buildAll = async (match?: string[]) => {
 };
 
 const onlyMatches = (paths: string[], matches: string[] = []) => {
-	return paths.filter(filePath => {
+	return paths.filter((filePath) => {
 		return matches.reduce<boolean>((result, str) => {
 			const pattern = new RegExp(str, 'gi');
 			return result || pattern.test(filePath);
@@ -364,7 +364,7 @@ const onlyMatches = (paths: string[], matches: string[] = []) => {
 };
 
 const includeMatches = (paths: string[]) => {
-	return paths.filter(filePath => {
+	return paths.filter((filePath) => {
 		return ConfigManager.include.reduce<boolean>((result, match) => {
 			const pattern = new RegExp(match, 'gi');
 			return result || pattern.test(filePath);
@@ -373,7 +373,7 @@ const includeMatches = (paths: string[]) => {
 };
 
 const filterMatches = (paths: string[]) => {
-	return paths.filter(filePath => {
+	return paths.filter((filePath) => {
 		return !ConfigManager.exclude.reduce<boolean>((result, match) => {
 			const pattern = new RegExp(match, 'gi');
 			return result || pattern.test(filePath);
@@ -467,7 +467,7 @@ export const compileContract = async (contractPath: string) => {
 				contractPath
 			)}" "${outputPath}" "${basename}" ${buildFlags}`
 		)
-		.catch(err => {
+		.catch((err) => {
 			spinner.fail('Failed to compile');
 			console.log(` --> ${err}`);
 			throw err;
