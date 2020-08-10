@@ -30,13 +30,16 @@ export const mapParameterType = ({
 }) => {
 	// Handle array types
 	const wrapper = eosType.endsWith('[]') ? 'Array' : undefined;
-	const parameterType = eosType.replace('[]', '');
+	const isOptional = eosType.endsWith('?');
+	const parameterType = eosType.replace('[]', '').replace('?', '');
 	const type =
 		contractStructs && contractName && contractStructs[parameterType]
 			? pascalCase(contractName) + pascalCase(parameterType)
 			: mapTypes[parameterType] || 'string';
 	if (wrapper) {
 		return `${wrapper}<${type}>`;
+	} else if (isOptional) {
+		return type + '|undefined';
 	} else {
 		return type;
 	}
