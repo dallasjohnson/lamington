@@ -10,6 +10,8 @@ const glob = promisify(globWithCallbacks);
 
 type IndentedGeneratorLevel = { [key: string]: Array<string> | IndentedGeneratorLevel };
 type GeneratorLevel = Array<string | IndentedGeneratorLevel>;
+type Variant = { name: string; types: string[] };
+type AddedType = { new_type_name: string; type: string };
 
 /**
  * Parses a C++ type definition into a Typescript definition
@@ -23,26 +25,76 @@ export const mapParameterType = ({
 	eosType,
 	contractName,
 	contractStructs,
+	variants,
+	addedTypes,
 }: {
 	eosType: string;
-	contractName?: string;
-	contractStructs?: any;
+	contractName: string;
+	contractStructs: any;
+	variants: { [key: string]: Variant };
+	addedTypes: { [key: string]: AddedType };
 }) => {
 	// Handle array types
-	const wrapper = eosType.endsWith('[]') ? 'Array' : undefined;
-	const isOptional = eosType.endsWith('?');
-	const parameterType = eosType.replace('[]', '').replace('?', '');
-	const type =
-		contractStructs && contractName && contractStructs[parameterType]
-			? pascalCase(contractName) + pascalCase(parameterType)
-			: mapTypes[parameterType] || 'string';
-	if (wrapper) {
-		return `${wrapper}<${type}>`;
-	} else if (isOptional) {
-		return type + '|undefined';
-	} else {
-		return type;
+	// const isArray = eosType.endsWith('[]');
+	// const isOptional = eosType.endsWith('?');
+	// const parameterType = isArray ? eosType.slice(0, -2) : eosType.replace('?', '');
+	// console.log('pre::: ' + eosType);
+
+	function findType(key: string): string {
+		if (contractStructs[key]) {
+			return pascalCase(contractName) + pascalCase(key);
+		}
+		if (variants[key]) {
+			return pascalCase(contractName) + pascalCase(variants[key].name);
+		}
+		if (addedTypes[key])
+			return pascalCase(contractName) + pascalCase(addedTypes[key].new_type_name);
+		return mapTypes[key] || 'string';
 	}
+
+	function extractPair(type: string): string {
+		const isPair = type.startsWith('pair_');
+		const isArray = type.endsWith('[]');
+		const isOptional = type.endsWith('?');
+		const parameterType = isArray ? type.slice(0, -2) : type.replace('?', '');
+		let resultType: string;
+
+		// console.log('type::: ' + parameterType);
+		// console.log('contractStructs:::: ' + JSON.stringify(contractStructs));
+
+		if (isPair) {
+			var _type = parameterType.replace('pair_', '');
+			var pair_elements = _type.split('_');
+			var [first, second] = [
+				pair_elements[0],
+				pair_elements.slice(1, pair_elements.length).join('_'),
+			];
+			// console.log('second before extract ::: ' + second);
+
+			second = extractPair(second);
+
+			// console.log('second after extract ::: ' + second);
+
+			first = first.replace('[]', '').replace('?', '');
+			second = second.replace('[]', '').replace('?', '');
+			// first = findType({ contractStructs, contractName, key: first });
+
+			// second = findType({ contractStructs, contractName, key: second });
+
+			resultType = `{ key: ${first}; value: ${second} }`;
+		} else {
+			resultType = findType(parameterType);
+		}
+		if (isArray) {
+			return `Array<${resultType}>`;
+		} else if (isOptional) {
+			return resultType + '|null';
+		} else {
+			return resultType;
+		}
+	}
+
+	return extractPair(eosType);
 };
 
 export const generateTypesFromString = async (
@@ -52,13 +104,20 @@ export const generateTypesFromString = async (
 	const abi = JSON.parse(rawABI);
 	let contractActions = abi.actions;
 	let contractTables = abi.tables;
+	let variants: { [key: string]: Variant } = Object.assign(
+		{},
+		...abi.variants.map((variant: Variant) => ({ [variant['name']]: variant }))
+	);
+	let addedTypes: { [key: string]: AddedType } = Object.assign(
+		{},
+		...abi.types.map((addedType: AddedType) => ({ [addedType['new_type_name']]: addedType }))
+	);
 	let contractStructs = Object.assign(
 		{},
 		...abi.structs.map((struct: any) => ({ [struct['name']]: struct }))
 	);
 
 	// console.log('tables: ' + JSON.stringify(contractTables));
-	// console.log('structs: ' + JSON.stringify(contractStructs));
 	// Prepend warning text
 	const result: GeneratorLevel = [
 		'// =====================================================',
@@ -82,19 +141,68 @@ export const generateTypesFromString = async (
 	result.push(`import { ${imports.join(', ')} } from 'lamington';`);
 	result.push('');
 	result.push('// Table row types');
+
 	// Generate structs from ABI
 	for (const key in contractStructs) {
 		const structInterface = {
 			[`export interface ${pascalCase(contractName)}${pascalCase(key)}`]: contractStructs[
 				key
 			].fields.map(
-				(field: any) => `${field.name}: ${mapParameterType({ contractName, eosType: field.type })};`
+				(field: any) =>
+					`${field.name}: ${mapParameterType({
+						contractName,
+						contractStructs,
+						eosType: field.type,
+						variants,
+						addedTypes,
+					})};`
 			),
 		};
 
 		result.push(structInterface);
+
 		result.push('');
 	}
+	result.push('// Added Types');
+
+	for (const key in addedTypes) {
+		const typeInterface = `export type ${pascalCase(contractName)}${pascalCase(
+			addedTypes[key].new_type_name
+		)} = ${mapParameterType({
+			eosType: addedTypes[key].type,
+			contractName,
+			contractStructs,
+			variants,
+			addedTypes,
+		})};`;
+		result.push(typeInterface);
+	}
+
+	result.push('');
+	result.push('// Variants');
+
+	// console.log('variants: ' + JSON.stringify(variants));
+
+	for (const key in variants) {
+		let fields = new Set();
+		for (const field of variants[key].types) {
+			const mappedType = mapParameterType({
+				eosType: field,
+				contractName,
+				contractStructs,
+				variants,
+				addedTypes,
+			});
+			fields.add(mappedType);
+		}
+		const mappedFields = Array.from(fields.values());
+		const typeInterface = `export type ${pascalCase(contractName)}${pascalCase(
+			variants[key].name
+		)} = [string, ${mappedFields.join(' | ')}];`;
+		result.push(typeInterface);
+		result.push('');
+	}
+	result.push('');
 	// Generate contract type from ABI
 	const generatedContractActions = contractActions.map((action: any) => {
 		// With a function for each action
@@ -104,12 +212,36 @@ export const generateTypesFromString = async (
 					contractName,
 					contractStructs,
 					eosType: parameter.type,
+					variants,
+					addedTypes,
 				})}`
 		);
 		// Optional parameter at the end on every contract method.
 		parameters.push('options?: { from?: Account, auths?: ActorPermission[] }');
 
+		// ObjectParamSignature
+
 		return `${action.name}(${parameters.join(', ')}): Promise<any>;`;
+	});
+
+	const generatedContractActionsObjects = contractActions.map((action: any) => {
+		// With a function for each action using object for params
+
+		const actionParams = contractStructs[action.name].fields.map(
+			(parameter: any) =>
+				`${parameter.name}: ${mapParameterType({
+					contractName,
+					contractStructs,
+					eosType: parameter.type,
+					variants,
+					addedTypes,
+				})}`
+		);
+		const parametersObj = [`params: {${actionParams.join(', ')}}`];
+		// Optional parameter at the end on every contract method.
+		parametersObj.push('options?: { from?: Account, auths?: ActorPermission[] }');
+
+		return `${action.name}O(${parametersObj.join(', ')}): Promise<any>;`;
 	});
 	// Generate tables
 	const generatedTables = contractTables.map(
@@ -125,6 +257,8 @@ export const generateTypesFromString = async (
 		[`export interface ${pascalCase(contractName)} extends Contract`]: [
 			'// Actions',
 			...generatedContractActions,
+			'// Actions with object params. (This is WIP and not ready for use)',
+			...generatedContractActionsObjects,
 			'',
 			'// Tables',
 			...generatedTables,

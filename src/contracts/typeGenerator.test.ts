@@ -44,21 +44,42 @@ describe('type generator', function () {
 	context('map parameter types', function () {
 		it(`should map 'string' to 'string'`, function () {
 			assert.equal(
-				mapParameterType({ eosType: 'string' }),
+				mapParameterType({
+					eosType: 'string',
+					contractName: '',
+					contractStructs: {},
+					addedTypes: {},
+					variants: {},
+				}),
 				'string',
 				`'string' types should map to 'string'`
 			);
 		});
 
 		it(`should map 'bool' to 'boolean'`, function () {
-			assert.equal(mapParameterType({ eosType: 'bool' }), 'boolean');
+			assert.equal(
+				mapParameterType({
+					eosType: 'bool',
+					contractName: '',
+					contractStructs: {},
+					addedTypes: {},
+					variants: {},
+				}),
+				'boolean'
+			);
 		});
 
 		context('eos types', function () {
 			it(`should map name types to 'string|number'`, function () {
 				stringNumberTypes.map((eosType) =>
 					assert.equal(
-						mapParameterType({ eosType }),
+						mapParameterType({
+							eosType,
+							contractName: '',
+							contractStructs: {},
+							addedTypes: {},
+							variants: {},
+						}),
 						'string|number',
 						`'${eosType}' type should map to 'string' or 'number'`
 					)
@@ -67,7 +88,13 @@ describe('type generator', function () {
 
 			it(`should map 'checksum' to 'string'`, function () {
 				assert.equal(
-					mapParameterType({ eosType: 'checksum' }),
+					mapParameterType({
+						eosType: 'checksum',
+						contractName: '',
+						contractStructs: {},
+						addedTypes: {},
+						variants: {},
+					}),
 					'string',
 					`'checksum' type should map to 'string'`
 				);
@@ -78,7 +105,13 @@ describe('type generator', function () {
 			numberTypes.forEach((eosType) => {
 				it(`should map '${eosType}' to 'number'`, function () {
 					assert.equal(
-						mapParameterType({ eosType }),
+						mapParameterType({
+							eosType,
+							contractName: '',
+							contractStructs: {},
+							addedTypes: {},
+							variants: {},
+						}),
 						'number',
 						`Integer type '${eosType}' should map to 'number'`
 					);
@@ -88,28 +121,41 @@ describe('type generator', function () {
 
 		context('complex types', function () {
 			it(`should handle array types`, function () {
-				assert.equal(mapParameterType({ eosType: 'bool[]' }), 'Array<boolean>');
+				assert.equal(
+					mapParameterType({
+						eosType: 'bool[]',
+						contractName: '',
+						contractStructs: {},
+						addedTypes: {},
+						variants: {},
+					}),
+					'Array<boolean>'
+				);
 			});
 
-			it(`should handle custom types from the contract`, function () {
+			it(`should handle pairs from the contract`, function () {
 				assert.equal(
 					mapParameterType({
 						eosType: 'pair_uint8_string',
 						contractName: 'TestContract',
 						contractStructs: { pair_uint8_string: 'pair_uint8_string' },
+						addedTypes: {},
+						variants: {},
 					}),
-					'TestContractPairUint8String'
+					'{ key: uint8; value: string }'
 				);
 			});
 
-			it(`should handle custom types in containers`, function () {
+			it(`should handle pairs in containers`, function () {
 				assert.equal(
 					mapParameterType({
 						eosType: 'pair_uint8_string[]',
 						contractName: 'TestContract',
 						contractStructs: { pair_uint8_string: 'pair_uint8_string' },
+						addedTypes: {},
+						variants: {},
 					}),
-					'Array<TestContractPairUint8String>'
+					'Array<{ key: uint8; value: string }>'
 				);
 			});
 		});
@@ -119,7 +165,12 @@ describe('type generator', function () {
 			{
 				"____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
 				"version": "eosio::abi/1.1",
-				"types": [],
+				"types": [
+					{
+						"new_type_name": "INT16_VEC",
+						"type": "int16[]"
+					}
+				],
 				"structs": [{
 						"name": "dac",
 						"base": "",
@@ -266,7 +317,10 @@ describe('type generator', function () {
 						"body": "All the the action descibed in this contract are subject to the EOSDAC consitution as held at http://eosdac.io. This includes, but is not limited to membership terms and conditions, dispute resolution and severability."
 					}
 				],
-				"variants": []
+				"variants": [{
+					"name": "variant_int8_int16_int32_int64_string",
+					"types": ["int8","int16","int32","int64","uint8","string", "bool", "INT16_VEC"]
+				}]
 			}
 			`;
 			let result: string[] = [];
@@ -275,13 +329,13 @@ describe('type generator', function () {
 				result = rawResult.split('\n');
 
 				// Uncomment below to help debug tests
-				// result.forEach((v, i) => {
-				// 	console.log(i + ' ' + JSON.stringify(v));
-				// });
+				result.forEach((v, i) => {
+					console.log(i + ' ' + JSON.stringify(v));
+				});
 			});
 
 			it('should have the correct number of elements', async () => {
-				assert.equal(result.length, 59);
+				assert.equal(result.length, 69);
 			});
 			it('should add file header constants', async () => {
 				assert.equal(result[1], '// WARNING: GENERATED FILE');
@@ -292,11 +346,48 @@ describe('type generator', function () {
 				assert.equal(result[20], '\tsymbol: string;');
 			});
 
-			it('should add Action type defs', async () => {
-				assert.equal(result[49], 'export interface TestContractName extends Contract {');
+			it('should add AddedTypes type defs', async () => {
+				assert.equal(result[49], '// Added Types');
+				assert.equal(result[50], 'export type TestContractNameINT16VEC = Array<number>;');
+				assert.equal(result[51], '');
+			});
+
+			it('should add Variants type defs', async () => {
+				assert.equal(result[52], '// Variants');
 				assert.equal(
-					result[51],
+					result[53],
+					'export type TestContractNameVariantInt8Int16Int32Int64String = [string, number | string | boolean | TestContractNameINT16VEC];'
+				);
+				// assert.equal(result[54], '');
+			});
+
+			it('should add Action type defs', async () => {
+				assert.equal(result[56], 'export interface TestContractName extends Contract {');
+				assert.equal(
+					result[58],
 					'\tregaccount(dac_id: string|number, account: string|number, type: number, options?: { from?: Account, auths?: ActorPermission[] }): Promise<any>;'
+				);
+			});
+			it('should add Action methods type defs', async () => {
+				assert.equal(result[57], '\t// Actions');
+				assert.equal(
+					result[58],
+					'\tregaccount(dac_id: string|number, account: string|number, type: number, options?: { from?: Account, auths?: ActorPermission[] }): Promise<any>;'
+				);
+			});
+
+			it('should add Action methods Object param type defs', async () => {
+				assert.equal(result[60], '\t// Actions with object params');
+				assert.equal(
+					result[61],
+					'\tregaccountO(params: {dac_id: string|number, account: string|number, type: number}, options?: { from?: Account, auths?: ActorPermission[] }): Promise<any>;'
+				);
+			});
+			it('should add Table defs', async () => {
+				assert.equal(result[64], '\t// Tables');
+				assert.equal(
+					result[65],
+					'\tdacsTable(options?: GetTableRowsOptions): Promise<TableRowsResult<TestContractNameDac>>;'
 				);
 			});
 		});

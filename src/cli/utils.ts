@@ -14,7 +14,7 @@ import { promisify } from 'util';
 
 const exists = promisify(existsCallback);
 const glob = promisify(globCallback);
-const mkdirp = promisify(mkdirpCallback);
+// const mkdirp = promisify(mkdirpCallback);
 const rimraf = promisify(rimrafCallback);
 const writeFile = promisify(writeFileCallback);
 const readFile = promisify(readFileCallback);
@@ -26,8 +26,8 @@ import 'trace';
 import 'clarify';
 Error.stackTraceLimit = 20;
 
-import { Docker } from 'docker-cli-js';
-export const docker = new Docker();
+import { Docker, Options } from 'docker-cli-js';
+export const docker = new Docker(new Options(undefined, undefined, true));
 
 import { EOSManager } from '../eosManager';
 import { sleep } from '../utils';
@@ -96,11 +96,15 @@ export const imageExists = async () => {
  * @author Johan Nordberg <github.com/jnordberg>
  */
 export const buildImage = async () => {
+	console.log('build image');
 	// Log notification
-	spinner.create('Building docker image');
+	spinner.create('Building docker image for :' + ConfigManager.cdt + ' on: ' + ConfigManager.eos);
 	// Clear the docker directory if it exists.
 	await rimraf(TEMP_DOCKER_DIRECTORY);
-	await mkdirp(TEMP_DOCKER_DIRECTORY, {});
+	console.log('deleting temp directory.');
+	await mkdirpCallback(TEMP_DOCKER_DIRECTORY, {});
+	console.log('\n\n\n creating temp directory.');
+
 	// Write a Dockerfile so Docker knows what to build.
 	const systemDeps = ['build-essential', 'ca-certificates', 'cmake', 'curl', 'git', 'wget'];
 	await writeFile(
@@ -122,7 +126,13 @@ export const buildImage = async () => {
 		`.replace(/\t/gm, '')
 	);
 	// Execute docker build process
-	await docker.command(`build -t ${await dockerImageName()} "${TEMP_DOCKER_DIRECTORY}"`);
+	await docker.command(
+		`build -t ${await dockerImageName()} "${TEMP_DOCKER_DIRECTORY}"`,
+		(err, data) => {
+			console.log('error: ' + err);
+			console.log('data: ' + data);
+		}
+	);
 	// Clean up after ourselves.
 	await rimraf(TEMP_DOCKER_DIRECTORY);
 	spinner.end('Built docker image');

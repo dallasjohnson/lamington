@@ -13,6 +13,7 @@ import { promisify } from 'util';
 import { ConfigManager } from './../configManager';
 import * as spinner from './../cli/logIndicator';
 import { GitIgnoreManager } from '../gitignoreManager';
+import { url } from 'inspector';
 
 const exists = promisify(existsCallback);
 const mkdirp = promisify(mkdirpCallback);
@@ -97,8 +98,8 @@ export class ProjectManager {
 
 			process.exit(1);
 		}
-
 		ProjectManager.cache = JSON.parse(packageJson);
+		console.log(ProjectManager.cache);
 	}
 
 	/**
@@ -141,38 +142,37 @@ export class ProjectManager {
 		try {
 			const got = require('got');
 			const tar = require('tar');
+
+			const stream = require('stream');
+			const util = require('util');
+			const pipeline = util.promisify(stream.pipeline);
+
 			const cloneUrl = `https://codeload.github.com/MitchPierias/EOSIO-Lamington-Boilerplate/tar.gz/master`;
+			spinner.update('Cloning example project: ' + cloneUrl);
 
-			spinner.update('Cloning example project');
+			// return new Promise(async (resolve, reject) => {
+			// Ensure tmp directory exists and capture directory path
+			spinner.update('before creating temp directory: ');
 
-			return new Promise(async (resolve, reject) => {
-				// Ensure tmp directory exists and capture directory path
-				const tmpPath = await ProjectManager.createDirectoryIfMissing('__tmp__');
-				// Stream the repo clone and untar
-				got
-					.stream(cloneUrl)
-					.pipe(
-						tar.extract({
-							cwd: tmpPath,
-							strip: 1,
-						})
-					)
-					.on('error', (error: Error) => {
-						reject(error);
-					})
-					.on('end', async () => {
-						// Clone example repository into tmp
-						const clonedFiles = await readdir(tmpPath);
-						if (clonedFiles.length <= 0) throw new Error(`No files cloned from repo ${cloneUrl}`);
-						// Merge example contracts into current project
-						await ncp(path.join(tmpPath, 'contracts'), path.join(process.cwd(), 'contracts'));
-						// Cleanup temporary directory
-						spinner.update('Cleaning temporary files');
-						await rimraf(tmpPath);
-						spinner.end('Created example contracts');
-						resolve(true);
-					});
-			});
+			const tmpPath = await ProjectManager.createDirectoryIfMissing('__tmp__');
+			// Stream the repo clone and untar
+			spinner.update('Creating temp directory: ' + tmpPath);
+			await pipeline(
+				got.stream(cloneUrl),
+				tar.extract({
+					cwd: tmpPath,
+					strip: 1,
+				})
+			);
+
+			const clonedFiles = await readdir(tmpPath);
+			if (clonedFiles.length <= 0) throw new Error(`No files cloned from repo ${cloneUrl}`);
+			// Merge example contracts into current project
+			await ncp(path.join(tmpPath, 'contracts'), path.join(process.cwd(), 'contracts'));
+			// Cleanup temporary directory
+			spinner.update('Cleaning temporary files');
+			await rimraf(tmpPath);
+			spinner.end('Created example contracts');
 		} catch (error) {
 			spinner.fail('Failed to clone repository');
 			console.log(error);

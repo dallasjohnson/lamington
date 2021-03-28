@@ -25,8 +25,8 @@ export class AccountManager {
 	 * @returns Result returned from [[AccountManager.createAccounts]]
 	 */
 	static createAccount = async (accountName?: string, options?: AccountCreationOptions) => {
-		let accountNameArray = accountName ? [accountName] : undefined;
-		const [account] = await AccountManager.createAccounts(1, accountNameArray, options);
+		let accountNameArray = accountName ? [accountName] : 1;
+		const [account] = await AccountManager.createAccounts(accountNameArray, options);
 		return account;
 	};
 
@@ -38,28 +38,28 @@ export class AccountManager {
 	 * @returns Array of created account transaction promises
 	 */
 	static createAccounts = async (
-		numberOfAccounts = 1,
-		accountNames?: string[],
+		accountNamesOrNumberOfAccounts: Array<string> | number,
 		options?: AccountCreationOptions
 	) => {
 		const accounts = [];
-		if (accountNames) {
-			for (let accountName of accountNames) {
+
+		if (typeof accountNamesOrNumberOfAccounts == 'number') {
+			// Repeat account creation for specified
+			for (let i = 0; i < accountNamesOrNumberOfAccounts; i++) {
 				const resolvedPrivateKey = options?.privateKey ?? (await ecc.unsafeRandomKey());
-				const publicKey = await ecc.privateToPublic(resolvedPrivateKey);
+
+				const seedKey = await ecc.unsafeRandomKey();
+				const publicKey = await ecc.privateToPublic(seedKey);
+				const accountName = accountNameFromPublicKey(publicKey);
 				const account = new Account(accountName, resolvedPrivateKey);
 				// Publish the new account and store result
 				await AccountManager.setupAccount(account, options);
 				accounts.push(account);
 			}
 		} else {
-			// Repeat account creation for specified
-			for (let i = 0; i < numberOfAccounts; i++) {
+			for (let accountName of accountNamesOrNumberOfAccounts) {
 				const resolvedPrivateKey = options?.privateKey ?? (await ecc.unsafeRandomKey());
-
-				const seedKey = await ecc.unsafeRandomKey();
-				const publicKey = await ecc.privateToPublic(seedKey);
-				const accountName = accountNameFromPublicKey(publicKey);
+				const publicKey = await ecc.privateToPublic(resolvedPrivateKey);
 				const account = new Account(accountName, resolvedPrivateKey);
 				// Publish the new account and store result
 				await AccountManager.setupAccount(account, options);

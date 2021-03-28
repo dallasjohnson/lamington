@@ -2,6 +2,7 @@ import * as assert from 'assert';
 import * as chai from 'chai';
 // @ts-ignore
 import * as deepEqualInAnyOrder from 'deep-equal-in-any-order';
+import * as chaiAsPromised from 'chai-as-promised';
 
 import { EOSManager } from './eosManager';
 import { TableRowsResult } from './contracts';
@@ -10,6 +11,7 @@ import * as chalk from 'chalk';
 
 // Extend Chai's expect methods
 chai.use(deepEqualInAnyOrder);
+chai.use(chaiAsPromised);
 
 /**
  * Pauses the current process until the specified EOS block number occurs
@@ -66,6 +68,15 @@ export const assertRowsContain = async <RowType>(
 };
 
 /**
+ * Asserts that the promise succeeds in execution.
+ * @author Dallas Johnson <github.com/dallasjohnson>
+ * @param operation Operation promise
+ */
+export const assertSucceeds = async (operation: Promise<any>): Promise<any> => {
+	return await chai.expect(operation).to.be.fulfilled;
+};
+
+/**
  * Compares table rows against expected rows irrespective of order
  * @author Kevin Brown <github.com/thekevinbrown>
  * @author Mitch Pierias <github.com/MitchPierias>
@@ -89,6 +100,7 @@ export const assertRowsEqual = async <RowType>(
 	chai.expect(result).to.deep.equalInAnyOrder({
 		rows: expected,
 		more: false,
+		next_key: '',
 	});
 };
 
@@ -108,6 +120,7 @@ export const assertRowsEqualStrict = async <RowType>(
 	assert.deepStrictEqual(result, {
 		rows: expected,
 		more: false,
+		next_key: '',
 	});
 };
 
