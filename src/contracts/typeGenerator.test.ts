@@ -377,7 +377,10 @@ describe('type generator', function () {
 			});
 
 			it('should add Action methods Object param type defs', async () => {
-				assert.equal(result[60], '\t// Actions with object params');
+				assert.equal(
+					result[60],
+					'\t// Actions with object params. (This is WIP and not ready for use)'
+				);
 				assert.equal(
 					result[61],
 					'\tregaccountO(params: {dac_id: string|number, account: string|number, type: number}, options?: { from?: Account, auths?: ActorPermission[] }): Promise<any>;'
