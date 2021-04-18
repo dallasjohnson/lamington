@@ -347,7 +347,10 @@ describe('type generator', function () {
 			});
 
 			it('should add Table Row type defs from base types', async () => {
-				assert.equal(result[34], 'export interface TestContractNameRegaccount extends regdac {');
+				assert.equal(
+					result[34],
+					'export interface TestContractNameRegaccount extends TestContractNameRegdac {'
+				);
 			});
 
 			it('should add AddedTypes type defs', async () => {
