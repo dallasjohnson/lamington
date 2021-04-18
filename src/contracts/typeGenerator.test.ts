@@ -245,7 +245,7 @@ describe('type generator', function () {
 					},
 					{
 						"name": "regaccount",
-						"base": "",
+						"base": "regdac",
 						"fields": [{
 								"name": "dac_id",
 								"type": "name"
@@ -344,6 +344,10 @@ describe('type generator', function () {
 				assert.equal(result[9], 'export interface TestContractNameDac {');
 				assert.equal(result[19], 'export interface TestContractNameExtendedSymbol {');
 				assert.equal(result[20], '\tsymbol: string;');
+			});
+
+			it('should add Table Row type defs from base types', async () => {
+				assert.equal(result[34], 'export interface TestContractNameRegaccount extends regdac {');
 			});
 
 			it('should add AddedTypes type defs', async () => {

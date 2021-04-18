@@ -144,10 +144,13 @@ export const generateTypesFromString = async (
 
 	// Generate structs from ABI
 	for (const key in contractStructs) {
+		console.log('contractStructs::::::: ' + JSON.stringify(contractStructs[key].base));
+		const extendsClass = contractStructs[key].base as string;
+		const extendString = extendsClass.length > 0 ? ` extends ${extendsClass}` : '';
 		const structInterface = {
-			[`export interface ${pascalCase(contractName)}${pascalCase(key)}`]: contractStructs[
+			[`export interface ${pascalCase(contractName)}${pascalCase(
 				key
-			].fields.map(
+			)}${extendString}`]: contractStructs[key].fields.map(
 				(field: any) =>
 					`${field.name}: ${mapParameterType({
 						contractName,
