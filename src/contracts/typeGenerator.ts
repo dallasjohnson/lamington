@@ -144,7 +144,6 @@ export const generateTypesFromString = async (
 
 	// Generate structs from ABI
 	for (const key in contractStructs) {
-		console.log('contractStructs::::::: ' + JSON.stringify(contractStructs[key].base));
 		const extendsClass = contractStructs[key].base as string;
 		const extendString = extendsClass.length > 0 ? ` extends ${extendsClass}` : '';
 		const structInterface = {
