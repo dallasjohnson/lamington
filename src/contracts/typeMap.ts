@@ -38,15 +38,15 @@ const types: { [key: string]: string } = {
 	uint8: 'number',
 	uint16: 'number',
 	uint32: 'number',
-	uint64: 'number',
-	uint128: 'number',
-	uint256: 'number',
+	uint64: 'number|string',
+	uint128: 'number|string',
+	uint256: 'number|string',
 	uint8_t: 'number',
 	uint16_t: 'number',
 	uint32_t: 'number',
-	uint64_t: 'number',
-	uint128_t: 'number',
-	uint256_t: 'number',
+	uint64_t: 'number|string',
+	uint128_t: 'number|string',
+	uint256_t: 'number|string',
 };
 
 export default types;
