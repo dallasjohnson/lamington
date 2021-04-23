@@ -5,7 +5,7 @@ import * as deepEqualInAnyOrder from 'deep-equal-in-any-order';
 import * as chaiAsPromised from 'chai-as-promised';
 
 import { EOSManager } from './eosManager';
-import { TableRowsResult } from './contracts';
+import { TableRowsResult, TransactionResponse } from './contracts';
 import { ConfigManager } from './configManager';
 import * as chalk from 'chalk';
 
@@ -72,7 +72,7 @@ export const assertRowsContain = async <RowType>(
  * @author Dallas Johnson <github.com/dallasjohnson>
  * @param operation Operation promise
  */
-export const assertSucceeds = async (operation: Promise<any>): Promise<any> => {
+export const assertSucceeds = async (operation: Promise<any>): Promise<TransactionResponse> => {
 	return await chai.expect(operation).to.be.fulfilled;
 };
 
@@ -136,13 +136,17 @@ export const assertRowCount = async (
 ) => {
 	const result = await getTableRowsResult;
 	// Precheck table rows don't extend beyond returned result
-	assert.equal(
+	assert.strictEqual(
 		result.more,
 		false,
 		`There were more rows pending on the response which was not expected.`
 	);
 	// Validate the number of rows returned equals the expected count
-	assert.equal(result.rows.length, expectedRowCount, `Different number of rows than expected.`);
+	assert.strictEqual(
+		result.rows.length,
+		expectedRowCount,
+		`Different number of rows than expected.`
+	);
 };
 
 /**

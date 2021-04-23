@@ -28,6 +28,8 @@ const numberTypes = [
 	'uint256_t',
 ];
 
+const bigNumberTypes = ['uint64', 'uint128', 'uint256', 'uint64_t', 'uint128_t', 'uint256_t'];
+
 /**
  * Name types are typically a string or uint64_t and typically represent an identity on the EOS blockchain
  */
@@ -102,7 +104,7 @@ describe('type generator', function () {
 		});
 
 		context('big numbers', function () {
-			numberTypes.forEach((eosType) => {
+			bigNumberTypes.forEach((eosType) => {
 				it(`should map '${eosType}' to 'number'`, function () {
 					assert.equal(
 						mapParameterType({
@@ -112,7 +114,7 @@ describe('type generator', function () {
 							addedTypes: {},
 							variants: {},
 						}),
-						'number',
+						'number|string',
 						`Integer type '${eosType}' should map to 'number'`
 					);
 				});
