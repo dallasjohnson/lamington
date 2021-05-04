@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosRequestConfig } from 'axios';
 import * as Mocha from 'mocha';
 import * as mkdirpCallback from 'mkdirp';
 import * as rimrafCallback from 'rimraf';
@@ -115,6 +115,11 @@ export const buildImage = async () => {
 		RUN apt-get update --fix-missing && apt-get install -y --no-install-recommends ${systemDeps.join(
 			' '
 		)}
+		
+		RUN wget https://github.com/eosio/eosio.cdt/releases/download/v1.6.3/eosio.cdt_1.6.3-1-ubuntu-18.04_amd64.deb && apt-get install -y ./*.deb && rm -f *.deb
+		RUN git clone --depth 1 --branch release/1.8.x https://github.com/EOSIO/eosio.contracts.git /usr/opt/eosio.contracts_v_1_8_x &&\
+		cd /usr/opt/eosio.contracts_v_1_8_x && ./build.sh -e "/usr/opt/eosio/$eos_ver" -c /usr/opt/eosio.cdt
+
 		RUN wget ${ConfigManager.cdt} && apt-get install -y ./*.deb && rm -f *.deb
 		RUN wget ${ConfigManager.eos} && apt-get install -y ./*.deb && rm -f *.deb
 		RUN eos_ver=$(ls /usr/opt/eosio | head -n 1); \
@@ -122,6 +127,8 @@ export const buildImage = async () => {
 				ConfigManager.contracts
 			} https://github.com/EOSIO/eosio.contracts.git /usr/opt/eosio.contracts &&\
 			cd /usr/opt/eosio.contracts && ./build.sh -e "/usr/opt/eosio/$eos_ver" -c /usr/opt/eosio.cdt
+
+
 		RUN apt-get clean && rm -rf /tmp/* /var/tmp/* && rm -rf /var/lib/apt/lists/*
 		`.replace(/\t/gm, '')
 	);
@@ -205,14 +212,32 @@ export const untilEosIsReady = async (attempts: number = MAX_CONNECTION_ATTEMPTS
 };
 
 /**
- * Determines if EOS is available using the `get_info` query response
- * @author Kevin Brown <github.com/thekevinbrown>
+ * Determines if EOS is available using the `get_code` from eosio query response
+ * @author Dallas Johnson <github.com/dallasjohnson>
  * @returns EOS instance availability
  */
+
 export const eosIsReady = async () => {
 	try {
-		const info = await axios.get('http://localhost:8888/v1/chain/get_info');
-		return info && info.status === 200;
+		const data = JSON.stringify({ account_name: 'eosio', code_as_wasm: 1 });
+
+		const config: AxiosRequestConfig = {
+			method: 'POST',
+			url: 'http://localhost:8888/v1/chain/get_code',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			data: data,
+		};
+
+		const info = await axios(config);
+
+		return (
+			info &&
+			info.status === 200 &&
+			info.data &&
+			info.data.code_hash != 'bfa1211a432693fa0b5a537f47fe8460009e5165197725254d41fe09be9dff14'
+		);
 	} catch (error) {
 		return false;
 	}
